@@ -37,14 +37,7 @@ script for ch[12]	Arab
 script for ch[13]	Arab
 script for ch[14]	Arab
 
-Run count: 3
-
-Before reverse:
-run[0]:	 start: 0	length: 7	level: 0	script: Latn
-run[1]:	 start: 7	length: 5	level: 1	script: Arab
-run[2]:	 start: 12	length: 3	level: 2	script: Arab
-
-After reverse:
+Final Runs:
 run[0]:	 start: 0	length: 7	level: 0	script: Latn
 run[1]:	 start: 12	length: 3	level: 2	script: Arab
 run[2]:	 start: 7	length: 5	level: 1	script: Arab

@@ -27,12 +27,7 @@ script for ch[7]	Latn
 script for ch[8]	Latn
 script for ch[9]	Latn
 
-Run count: 1
-
-Before reverse:
-run[0]:	 start: 0	length: 10	level: 0	script: Latn
-
-After reverse:
+Final Runs:
 run[0]:	 start: 0	length: 10	level: 0	script: Latn
 
 Glyph information:

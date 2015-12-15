@@ -43,12 +43,7 @@ script for ch[15]	Arab
 script for ch[16]	Arab
 script for ch[17]	Arab
 
-Run count: 1
-
-Before reverse:
-run[0]:	 start: 0	length: 18	level: 1	script: Arab
-
-After reverse:
+Final Runs:
 run[0]:	 start: 0	length: 18	level: 1	script: Arab
 
 Glyph information:
