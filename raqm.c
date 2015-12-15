@@ -31,7 +31,7 @@
 #endif
 
 /* for older fribidi versions */
-/*#ifndef HAVE_FRIBIDI_REORDER_RUNS*/
+#ifndef HAVE_FRIBIDI_REORDER_RUNS
 typedef struct _FriBidiRunStruct FriBidiRun;
 struct _FriBidiRunStruct
 {
@@ -78,18 +78,15 @@ FriBidiStrIndex fribidi_reorder_runs (
   FriBidiStrIndex run_start = 0;
   FriBidiStrIndex run_index = 0;
 
- /* if UNLIKELY
+ if
     (len == 0)
     {
       goto out;
-    } */
+    }
 
-  //DBG ("in fribidi_reorder_runs");
+  assert (bidi_types);
+  assert (embedding_levels);
 
-  //fribidi_assert (bidi_types);
-  //fribidi_assert (embedding_levels);
-
- // DBG ("reset the embedding levels, 4. whitespace at the end of line");
   {
     FriBidiStrIndex i;
 
@@ -150,7 +147,7 @@ out:
   return run_count;
 }
 
-//#endif
+#endif
 
 /* Stack to handle script detection */
 typedef struct _Stack {
