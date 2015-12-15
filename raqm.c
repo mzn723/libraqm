@@ -423,6 +423,7 @@ raqm_glyph_info_t *raqm_shape(const char *text , FT_Face face, raqm_direction_t 
       SCRIPT_TO_STRING(runs[i].hb_script);
       TEST("run[%d]:\t start: %d\tlength: %d\tlevel: %d\tscript: %s\n",i,runs[i].pos,runs[i].len,runs[i].level,buff);
     }
+    TEST("\n");
 #endif
 
     /* harfbuzz shaping */
