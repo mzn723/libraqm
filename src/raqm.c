@@ -634,6 +634,8 @@ raqm_get_glyphs (raqm_t *rq,
                  size_t *length)
 {
   size_t count = 0;
+  int current_x = 0;
+  int current_y = 0;
 
   if (!rq || !rq->runs || !length)
   {
@@ -669,6 +671,8 @@ raqm_get_glyphs (raqm_t *rq,
     len = hb_buffer_get_length (run->buffer);
     info = hb_buffer_get_glyph_infos (run->buffer, NULL);
     position = hb_buffer_get_glyph_positions (run->buffer, NULL);
+    current_x = 0;
+    current_y = 0;
 
     for (size_t i = 0; i < len; i++)
     {
@@ -678,12 +682,19 @@ raqm_get_glyphs (raqm_t *rq,
       rq->glyphs[count + i].y_advance = position[i].y_advance;
       rq->glyphs[count + i].x_offset = position[i].x_offset;
       rq->glyphs[count + i].y_offset = position[i].y_offset;
+      rq->glyphs[count + i].x_position = current_x + position[i].x_offset;
+      rq->glyphs[count + i].y_position = current_x + position[i].y_offset;
       rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
 
-      RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tfont: %s\n",
+      RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\t"
+                 "x_position: %d\ty_position: %d\tfont: %s\n",
           rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
           rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
+          rq->glyphs[count + i].x_position, rq->glyphs[count + i].y_position,
           rq->glyphs[count + i].ftface->family_name);
+
+      current_x += rq->glyphs[count + i].x_advance;
+      current_y += rq->glyphs[count + i].y_advance;
     }
 
     count += len;
