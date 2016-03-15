@@ -188,6 +188,8 @@ struct _raqm {
   raqm_glyph_t    *glyphs;
 
   raqm_flags_t     flags;
+
+  int              line_width;
 };
 
 struct _raqm_run {
@@ -242,6 +244,8 @@ raqm_create (void)
   rq->glyphs = NULL;
 
   rq->flags = RAQM_FLAG_NONE;
+
+  rq->line_width = -1;
 
   return rq;
 }
@@ -566,6 +570,30 @@ raqm_set_freetype_face_range (raqm_t *rq,
     rq->ftfaces[start + i] = face;
     FT_Reference_Face (face);
   }
+
+  return true;
+}
+
+/**
+ * raqm_set_line_width:
+ * @rq: a #raqm_t.
+ * @width: the line width.
+ *
+ * Sets the maximum line width for the paragraph, so that when the width is
+ * exceeded, a breaking line mechanism is applaied.
+ *
+ * Return value:
+ * %true if no errors happened, %false otherwise.
+ *
+ * Since: 0.2
+ */
+bool
+raqm_set_line_width (raqm_t *rq, int width)
+{
+  if (!rq)
+    return false;
+
+  rq->line_width = width;
 
   return true;
 }
