@@ -31,6 +31,8 @@
 #include <hb.h>
 #include <hb-ft.h>
 
+#include <ucdn.h>
+
 #include "raqm.h"
 #include "reorder_runs.h"
 
