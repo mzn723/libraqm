@@ -832,15 +832,15 @@ enum break_action {
 	EXPLICIT_BRK 				// ! in rules
 };
 
-static bool
+static void
 _raqm_find_line_break (raqm_t *rq)
 {
-	enum break_class *bk_classes;
-	enum break_action *bk_actions;
-	enum break_class cbk;
-	enum break_action brk;
+	enum break_class   current_class;
+	enum break_class   next_class;
+	enum break_action *break_actions;
+	enum break_action  current_action;
 
-	enum break_action bk_pairs[][JT+1] =  {   //                ---     'after'  class  ------
+	enum break_action  break_pairs[][JT+1] =  {
 		//       1   2   3   4	5	6	7	8	9  10  11  12  13  14  15  16  17  18  19  20  21   22  23  24  25  26  27
 		//     OP, CL, CL, QU, GL, NS, EX, SY, IS, PR, PO, NU, AL, ID, IN, HY, BA, BB, B2, ZW, CM, WJ,  H2, H3, JL, JV, JT, = after class
 		/*OP*/ { XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, CC, XX, XX, XX, XX, XX, XX }, // OP open
@@ -872,91 +872,87 @@ _raqm_find_line_break (raqm_t *rq)
 		/*JT*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, SS }, // Jamo Trailing Consonant
 	};
 
-	 bk_classes = malloc (sizeof (enum break_class) * rq->text_len); //glyoh_len
-	 bk_actions = malloc (sizeof (enum break_action) * rq->text_len); //glyoh_len
+	break_actions = malloc (sizeof (enum break_action) * rq->text_len); //glyoh_len
 
-	 for (size_t i = 0; i < rq->text_len; i++)
-	 {
-		 bk_classes[i] = ucdn_get_resolved_linebreak_class(rq->text[i]);
-	 }
+	current_class = ucdn_get_resolved_linebreak_class(rq->text[0]);
+	next_class    = ucdn_get_resolved_linebreak_class(rq->text[1]);
 
-	 cbk = bk_classes[0];
+	// handle case where input starts with an LF
+	if (current_class == LF)
+		current_class = BK;
 
-	 // handle case where input starts with an LF
-	 if (cbk == LF)
-		 cbk = BK;
+	// treat NL like BK
+	if (current_class == NL)
+		current_class = BK;
 
-	 // treat NL like BK
-	 if (cbk == NL)
-		  cbk = BK;
+	// treat SP at start of input as if it followed WJ
+	if (current_class == SP)
+		current_class = WJ;
 
-	 // treat SP at start of input as if it followed WJ
-	 if (cbk == SP)
-		  cbk = WJ;
+	// loop over all pairs in the string up to a hard break or CRLF pair
+	for (size_t i = 1; (i < rq->text_len) && (current_class != BK) && (current_class != CR || next_class == LF); i++)
+	{
+		next_class = ucdn_get_resolved_linebreak_class(rq->text[i]);
 
-	 for (size_t i = 0; (i < rq->text_len) && (cbk != BK) && (cbk != CR || bk_classes[i] == LF); i++)
-	 {
+		// handle spaces explicitly
+		if (next_class == SP) {
+			break_actions[i-1]  = PROHIBITED_BRK;   // apply rule LB 7: � SP
+			return;
+		}
 
-		 // handle spaces explicitly
-		 if (bk_classes[i]  == SP) {
-			 bk_actions[i-1]  = PROHIBITED_BRK;   // apply rule LB 7: � SP
-			 continue;                       // do not update cbk
-		 }
+		if (next_class == BK || next_class == NL || next_class == LF) {
+			break_actions[i-1]  = PROHIBITED_BRK;
+			current_class = BK;
+			return;
+		}
 
-		 if (bk_classes[i]  == BK || bk_classes[i]  == NL || bk_classes[i]  == LF) {
-			 bk_actions[i-1]  = PROHIBITED_BRK;
-			 cbk = BK;
-			 continue;
-		 }
+		if (next_class == CR)
+		{
+			break_actions[i-1]  = PROHIBITED_BRK;
+			current_class = CR;
+			return;
+		}
 
-		 if (bk_classes[i]  == CR)
-		 {
-			 bk_actions[i-1]  = PROHIBITED_BRK;
-			 cbk = CR;
-			 continue;
-		 }
+		//	  ASSERT(cbk < SP);
+		//	  ASSERT(bk_actions[i] < SP);
 
-   //	  ASSERT(cbk < SP);
-   //	  ASSERT(bk_actions[i] < SP);
+		// lookup pair table information in brkPairs[before, after];
+		current_action = break_pairs[current_class][next_class];
+		break_actions[i-1] = current_action;
 
-		 // lookup pair table information in brkPairs[before, after];
-		 brk = bk_pairs[cbk][bk_classes[i]];
-		 bk_actions[i-1] = brk;
+		if (current_action == INDIRECT_BRK)		// resolve indirect break
+		{
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)                    // if context is A SP * B
+				break_actions[i-1] = INDIRECT_BRK;             //       break opportunity
+			else                                        // else
+				break_actions[i-1] = PROHIBITED_BRK;           //       no break opportunity
+		}
 
-		 if (brk == INDIRECT_BRK)		// resolve indirect break
-		 {
-			 if (bk_classes[i-1] == SP)                    // if context is A SP * B
-				 bk_actions[i-1]  = INDIRECT_BRK;             //       break opportunity
-			 else                                        // else
-				 bk_actions[i-1]  = PROHIBITED_BRK;           //       no break opportunity
-		 }
+		else if (current_action == COMBINING_PROHIBITED_BRK)		// this is the case OP SP* CM
+		{
+			break_actions[i-1] = COMBINING_PROHIBITED_BRK;     // no break allowed
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) != SP)
+				return;                               // apply rule 9: X CM* -> X
+		}
 
-		 else if (brk == COMBINING_PROHIBITED_BRK)		// this is the case OP SP* CM
-		 {
-			 bk_actions[i-1]  = COMBINING_PROHIBITED_BRK;     // no break allowed
-			 if (bk_classes[i-1]  != SP)
-				 continue;                               // apply rule 9: X CM* -> X
-		 }
+		else if (current_action == COMBINING_INDIRECT_BRK)		// resolve combining mark break
+		{
+			break_actions[i-1] = PROHIBITED_BRK;               // don't break before CM
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)
+			{
+				break_actions[i-1] = PROHIBITED_BRK;		// legacy: keep SP CM together
+				if (i > 1)
+					break_actions[i-2] = ((ucdn_get_resolved_linebreak_class(rq->text[i-2]) == SP) ? INDIRECT_BRK : DIRECT_BRK);
+			} else                                     // apply rule 9: X CM * -> X
+				return;
+		}
 
-		 else if (brk == COMBINING_INDIRECT_BRK)		// resolve combining mark break
-		 {
-			 bk_actions[i-1]  = PROHIBITED_BRK;               // don't break before CM
-			 if (bk_classes[i-1]  == SP)
-			 {
-				 bk_actions[i-1]  = PROHIBITED_BRK;		// legacy: keep SP CM together
-				 if (i > 1)
-					 bk_actions[i-2] = ((bk_classes[i - 2] == SP) ? INDIRECT_BRK : DIRECT_BRK);
+		current_class = next_class;
+	}
 
-			 } else                                      // apply rule 9: X CM * -> X
-				 continue;                               // don't update cbk
-		 }
+	//NOW WE HAVE AN ARRAY OF ACTIONS!
 
-		 cbk = bk_classes[i];                                // save cbk of current character
-	 }
-
-	 //NOW WE HAVE AN ARRAY OF ACTIONS!
-
-	 return true;
+	return;
 }
 
 static bool
