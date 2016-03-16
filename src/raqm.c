@@ -769,6 +769,196 @@ _raqm_hb_dir (raqm_t *rq, FriBidiLevel level)
   return dir;
 }
 
+enum break_class
+{
+	// input types
+	OP = 0,	// open
+	CL,	// closing punctuation
+	CP,	// closing parentheses (from 5.2.0) (before 5.2.0 treat like CL)
+	QU,	// quotation
+	GL,	// glue
+	NS,	// no-start
+	EX,	// exclamation/interrogation
+	SY,	// Syntax (slash)
+	IS,	// infix (numeric) separator
+	PR,	// prefix
+	PO,	// postfix
+	NU,	// numeric
+	AL,	// alphabetic
+	ID,	// ideograph (atomic)
+	IN,	// inseparable
+	HY,	// hyphen
+	BA,	// break after
+	BB,	// break before
+	B2,	// break both
+	ZW,	// ZW space
+	CM,	// combining mark
+	WJ, // word joiner
+
+	// used for Korean Syllable Block pair table
+	H2, // Hamgul 2 Jamo Syllable
+	H3, // Hangul 3 Jamo Syllable
+	JL, // Jamo leading consonant
+	JV, // Jamo vowel
+	JT, // Jamo trailing consonant
+
+	// these are not handled in the pair tables
+	SA, // South (East) Asian
+	SP,	// space
+	PS,	// paragraph and line separators
+	BK,	// hard break (newline)
+	CR, // carriage return
+	LF, // line feed
+	NL, // next line
+	CB, // contingent break opportunity
+	SG, // surrogate
+	AI, // ambiguous
+	XX, // unknown
+};
+
+// Define some short-cuts for the table
+#define oo DIRECT_BRK				// '_' break allowed
+#define SS INDIRECT_BRK				// '%' only break across space (aka 'indirect break' below)
+#define cc COMBINING_INDIRECT_BRK	// '#' indirect break for combining marks
+#define CC COMBINING_PROHIBITED_BRK	// '@' indirect break for combining marks
+#define XX PROHIBITED_BRK			// '^' no break allowed_BRK
+
+enum break_action {
+	DIRECT_BRK = 0,             	// _ in table, 	oo in array
+	INDIRECT_BRK,               	// % in table, 	SS in array
+	COMBINING_INDIRECT_BRK,		// # in table, 	cc in array
+	COMBINING_PROHIBITED_BRK,  	// @ in table 	CC in array
+	PROHIBITED_BRK,             	// ^ in table, 	XX in array
+	EXPLICIT_BRK 				// ! in rules
+};
+
+static bool
+_raqm_find_line_break (raqm_t *rq)
+{
+	enum break_class *bk_classes;
+	enum break_action *bk_actions;
+	enum break_class cbk;
+	enum break_action brk;
+
+	enum break_action bk_pairs[][JT+1] =  {   //                ---     'after'  class  ------
+		//       1   2   3   4	5	6	7	8	9  10  11  12  13  14  15  16  17  18  19  20  21   22  23  24  25  26  27
+		//     OP, CL, CL, QU, GL, NS, EX, SY, IS, PR, PO, NU, AL, ID, IN, HY, BA, BB, B2, ZW, CM, WJ,  H2, H3, JL, JV, JT, = after class
+		/*OP*/ { XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, CC, XX, XX, XX, XX, XX, XX }, // OP open
+		/*CL*/ { oo, XX, XX, SS, SS, XX, XX, XX, XX, SS, SS, oo, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // CL close
+		/*CP*/ { oo, XX, XX, SS, SS, XX, XX, XX, XX, SS, SS, SS, SS, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // CL close
+		/*QU*/ { XX, XX, XX, SS, SS, SS, XX, XX, XX, SS, SS, SS, SS, SS, SS, SS, SS, SS, SS, XX, cc, XX, SS, SS, SS, SS, SS }, // QU quotation
+		/*GL*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, SS, SS, SS, SS, SS, SS, SS, SS, SS, SS, XX, cc, XX, SS, SS, SS, SS, SS }, // GL glue
+		/*NS*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, oo, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // NS no-start
+		/*EX*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, oo, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // EX exclamation/interrogation
+		/*SY*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // SY Syntax (slash)
+		/*IS*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, SS, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // IS infix (numeric) separator
+		/*PR*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, SS, SS, oo, SS, SS, oo, oo, XX, cc, XX, SS, SS, SS, SS, SS }, // PR prefix
+		/*PO*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, SS, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // NU numeric
+		/*NU*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, SS, SS, SS, SS, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // AL alphabetic
+		/*AL*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, SS, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // AL alphabetic
+		/*ID*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // ID ideograph (atomic)
+		/*IN*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // IN inseparable
+		/*HY*/ { oo, XX, XX, SS, oo, SS, XX, XX, XX, oo, oo, SS, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // HY hyphens and spaces
+		/*BA*/ { oo, XX, XX, SS, oo, SS, XX, XX, XX, oo, oo, oo, oo, oo, oo, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // BA break after
+		/*BB*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, SS, SS, SS, SS, SS, SS, SS, SS, SS, SS, XX, cc, XX, SS, SS, SS, SS, SS }, // BB break before
+		/*B2*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, oo, oo, oo, oo, SS, SS, oo, XX, XX, cc, XX, oo, oo, oo, oo, oo }, // B2 break either side, but not pair
+		/*ZW*/ { oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, oo, XX, oo, oo, oo, oo, oo, oo, oo }, // ZW zero width space
+		/*CM*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, oo, SS, SS, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, oo }, // CM combining mark
+		/*WJ*/ { SS, XX, XX, SS, SS, SS, XX, XX, XX, SS, SS, SS, SS, SS, SS, SS, SS, SS, SS, XX, cc, XX, SS, SS, SS, SS, SS }, // WJ word joiner
+		/*H2*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, SS, SS }, // Hangul 2 Jamo syllable
+		/*H3*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, SS }, // Hangul 3 Jamo syllable
+		/*JL*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, SS, SS, SS, SS, oo }, // Jamo Leading Consonant
+		/*JV*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, SS, SS }, // Jamo Vowel
+		/*JT*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, SS }, // Jamo Trailing Consonant
+	};
+
+	 bk_classes = malloc (sizeof (enum break_class) * rq->text_len); //glyoh_len
+	 bk_actions = malloc (sizeof (enum break_action) * rq->text_len); //glyoh_len
+
+	 for (size_t i = 0; i < rq->text_len; i++)
+	 {
+		 bk_classes[i] = ucdn_get_resolved_linebreak_class(rq->text[i]);
+	 }
+
+	 cbk = bk_classes[0];
+
+	 // handle case where input starts with an LF
+	 if (cbk == LF)
+		 cbk = BK;
+
+	 // treat NL like BK
+	 if (cbk == NL)
+		  cbk = BK;
+
+	 // treat SP at start of input as if it followed WJ
+	 if (cbk == SP)
+		  cbk = WJ;
+
+	 for (size_t i = 0; (i < rq->text_len) && (cbk != BK) && (cbk != CR || bk_classes[i] == LF); i++)
+	 {
+
+		 // handle spaces explicitly
+		 if (bk_classes[i]  == SP) {
+			 bk_actions[i-1]  = PROHIBITED_BRK;   // apply rule LB 7: � SP
+			 continue;                       // do not update cbk
+		 }
+
+		 if (bk_classes[i]  == BK || bk_classes[i]  == NL || bk_classes[i]  == LF) {
+			 bk_actions[i-1]  = PROHIBITED_BRK;
+			 cbk = BK;
+			 continue;
+		 }
+
+		 if (bk_classes[i]  == CR)
+		 {
+			 bk_actions[i-1]  = PROHIBITED_BRK;
+			 cbk = CR;
+			 continue;
+		 }
+
+   //	  ASSERT(cbk < SP);
+   //	  ASSERT(bk_actions[i] < SP);
+
+		 // lookup pair table information in brkPairs[before, after];
+		 brk = bk_pairs[cbk][bk_classes[i]];
+		 bk_actions[i-1] = brk;
+
+		 if (brk == INDIRECT_BRK)		// resolve indirect break
+		 {
+			 if (bk_classes[i-1] == SP)                    // if context is A SP * B
+				 bk_actions[i-1]  = INDIRECT_BRK;             //       break opportunity
+			 else                                        // else
+				 bk_actions[i-1]  = PROHIBITED_BRK;           //       no break opportunity
+		 }
+
+		 else if (brk == COMBINING_PROHIBITED_BRK)		// this is the case OP SP* CM
+		 {
+			 bk_actions[i-1]  = COMBINING_PROHIBITED_BRK;     // no break allowed
+			 if (bk_classes[i-1]  != SP)
+				 continue;                               // apply rule 9: X CM* -> X
+		 }
+
+		 else if (brk == COMBINING_INDIRECT_BRK)		// resolve combining mark break
+		 {
+			 bk_actions[i-1]  = PROHIBITED_BRK;               // don't break before CM
+			 if (bk_classes[i-1]  == SP)
+			 {
+				 bk_actions[i-1]  = PROHIBITED_BRK;		// legacy: keep SP CM together
+				 if (i > 1)
+					 bk_actions[i-2] = ((bk_classes[i - 2] == SP) ? INDIRECT_BRK : DIRECT_BRK);
+
+			 } else                                      // apply rule 9: X CM * -> X
+				 continue;                               // don't update cbk
+		 }
+
+		 cbk = bk_classes[i];                                // save cbk of current character
+	 }
+
+	 //NOW WE HAVE AN ARRAY OF ACTIONS!
+
+	 return true;
+}
+
 static bool
 _raqm_itemize (raqm_t *rq)
 {
