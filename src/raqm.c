@@ -672,7 +672,7 @@ raqm_get_glyphs (raqm_t *rq,
 {
   size_t count = 0;
   int current_x = 0;
-  const int line_space = 999; //JUST TEST
+  int line_space; //JUST TEST
   int current_line = 0;
 
   if (!rq || !rq->runs || !length)
@@ -709,6 +709,8 @@ raqm_get_glyphs (raqm_t *rq,
     len = hb_buffer_get_length (run->buffer);
     info = hb_buffer_get_glyph_infos (run->buffer, NULL);
     position = hb_buffer_get_glyph_positions (run->buffer, NULL);
+
+	line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
 
     for (size_t i = 0; i < len; i++)
     {
