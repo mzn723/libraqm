@@ -1020,7 +1020,7 @@ _raqm_line_break (raqm_t *rq)
 //						;
 					for (int j = i; j > 0; j--)
 					{
-						if (!break_here[run->pos + j])
+						if (break_here[run->pos + j])
 						{
 							index = j;
 							break;
