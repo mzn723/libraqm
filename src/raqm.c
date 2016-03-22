@@ -490,9 +490,9 @@ raqm_add_font_feature (raqm_t     *rq,
   return ok;
 }
 
-#ifdef HAVE_HB_FT_FONT_CREATE_REFERENCED
-# define HB_FT_FONT_CREATE(a) hb_ft_font_create_referenced (a)
-#else
+//#ifdef HAVE_HB_FT_FONT_CREATE_REFERENCED
+//# define HB_FT_FONT_CREATE(a) hb_ft_font_create_referenced (a)
+//#else
 static hb_font_t *
 _raqm_hb_ft_font_create_referenced (FT_Face face)
 {
@@ -500,7 +500,7 @@ _raqm_hb_ft_font_create_referenced (FT_Face face)
   return hb_ft_font_create (face, (hb_destroy_func_t) FT_Done_Face);
 }
 # define HB_FT_FONT_CREATE(a) _raqm_hb_ft_font_create_referenced (a)
-#endif
+//#endif
 
 /**
  * raqm_set_freetype_face:
@@ -977,6 +977,12 @@ _raqm_find_line_break (raqm_t *rq)
 		}
 		else
 			break_here[i] = false;
+	}
+
+	for(size_t i = 0; i < length; i++)
+	{
+		printf("%d ", break_here[i]);
+
 	}
 
 	free (break_actions);
