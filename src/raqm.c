@@ -710,7 +710,10 @@ raqm_get_glyphs (raqm_t *rq,
     info = hb_buffer_get_glyph_infos (run->buffer, NULL);
     position = hb_buffer_get_glyph_positions (run->buffer, NULL);
 
-	line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
+	if (rq->ftfaces[run->pos]->descender < 0)
+		line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender * (-1);
+	else
+		line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
 
     for (size_t i = 0; i < len; i++)
 	{
