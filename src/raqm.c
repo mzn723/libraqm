@@ -583,7 +583,7 @@ raqm_set_freetype_face_range (raqm_t *rq,
  * @width: the line width.
  *
  * Sets the maximum line width for the paragraph, so that when the width is
- * exceeded, a breaking line mechanism is applaied.
+ * exceeded, a breaking line mechanism is applied.
  *
  * Return value:
  * %true if no errors happened, %false otherwise.
@@ -672,7 +672,7 @@ raqm_get_glyphs (raqm_t *rq,
 {
   size_t count = 0;
   int current_x = 0;
-  int line_space; //JUST TEST
+  int line_space;
   int current_line = 0;
 
   if (!rq || !rq->runs || !length)
@@ -756,7 +756,7 @@ raqm_get_glyphs (raqm_t *rq,
 #endif
 
 	for (size_t i = 0; i < count; i++)
-		rq->glyphs[i].cluster = _raqm_u32_to_u8_index (rq,
+	  rq->glyphs[i].cluster = _raqm_u32_to_u8_index (rq,
 													   rq->glyphs[i].cluster);
 
 #ifdef RAQM_TESTING
@@ -848,13 +848,15 @@ enum break_action {
 	EXPLICIT_BRK 				// ! in rules
 };
 
-static size_t
-_raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
+static bool *
+_raqm_find_line_break (raqm_t *rq)
 {
+	size_t length = rq->text_len;
 	enum break_class   current_class;
 	enum break_class   next_class;
 	enum break_action *break_actions;
 	enum break_action  current_action;
+	bool *break_here;
 
 	enum break_action  break_pairs[][JT+1] =  {
 		//       1   2   3   4	5	6	7	8	9  10  11  12  13  14  15  16  17  18  19  20  21   22  23  24  25  26  27
@@ -888,10 +890,11 @@ _raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
 		/*JT*/ { oo, XX, XX, SS, SS, SS, XX, XX, XX, oo, SS, oo, oo, oo, SS, SS, SS, oo, oo, XX, cc, XX, oo, oo, oo, oo, SS }, // Jamo Trailing Consonant
 	};
 
-	break_actions = malloc (sizeof (enum break_action) * length); //glyoh_len
+	break_actions = malloc (sizeof (enum break_action) * length);
+	break_here = malloc (sizeof (bool) * length);
 
-	current_class = ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[0].cluster]);
-	next_class    = ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[1].cluster]);
+	current_class = ucdn_get_resolved_linebreak_class(rq->text[0]);
+	next_class    = ucdn_get_resolved_linebreak_class(rq->text[1]);
 
 	// handle case where input starts with an LF
 	if (current_class == LF)
@@ -908,7 +911,7 @@ _raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
 	// loop over all pairs in the string up to a hard break or CRLF pair
 	for (size_t i = 1; (i < length) && (current_class != BK) && (current_class != CR || next_class == LF); i++)
 	{
-		next_class = ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[i].cluster]);
+		next_class = ucdn_get_resolved_linebreak_class(rq->text[i]);
 
 		// handle spaces explicitly
 		if (next_class == SP) {
@@ -938,7 +941,7 @@ _raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
 
 		if (current_action == INDIRECT_BRK)		// resolve indirect break
 		{
-			if (ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[i-1].cluster]) == SP)                    // if context is A SP * B
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)                    // if context is A SP * B
 				break_actions[i-1] = INDIRECT_BRK;             //       break opportunity
 			else                                        // else
 				break_actions[i-1] = PROHIBITED_BRK;           //       no break opportunity
@@ -947,18 +950,18 @@ _raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
 		else if (current_action == COMBINING_PROHIBITED_BRK)		// this is the case OP SP* CM
 		{
 			break_actions[i-1] = COMBINING_PROHIBITED_BRK;     // no break allowed
-			if (ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[i-1].cluster]) != SP)
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) != SP)
 				continue;                               // apply rule 9: X CM* -> X
 		}
 
 		else if (current_action == COMBINING_INDIRECT_BRK)		// resolve combining mark break
 		{
 			break_actions[i-1] = PROHIBITED_BRK;               // don't break before CM
-			if (ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[i-1].cluster]) == SP)
+			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)
 			{
 				break_actions[i-1] = PROHIBITED_BRK;		// legacy: keep SP CM together
 				if (i > 1)
-					break_actions[i-2] = ((ucdn_get_resolved_linebreak_class(rq->text[rq->glyphs[i-2].cluster]) == SP) ? INDIRECT_BRK : DIRECT_BRK);
+					break_actions[i-2] = ((ucdn_get_resolved_linebreak_class(rq->text[i-2]) == SP) ? INDIRECT_BRK : DIRECT_BRK);
 			} else                                     // apply rule 9: X CM * -> X
 				continue;
 		}
@@ -966,38 +969,31 @@ _raqm_find_line_break (raqm_t *rq, size_t length, size_t index, bool LR)
 		current_class = next_class;
 	}
 
-	//NOW WE HAVE AN ARRAY OF ACTIONS!
-	if(LR)
+	for(size_t i = 0; i < length; i++)
 	{
-		for (int i = index; i >= 0; i--)
+		if (break_actions[i] == INDIRECT_BRK || break_actions[i] == DIRECT_BRK )
 		{
-			if (break_actions[i] != PROHIBITED_BRK || break_actions[i] != COMBINING_PROHIBITED_BRK)
-				return i;
+			break_here[i] = true;
 		}
+		else
+			break_here[i] = false;
 	}
 
-	else
-	{
-		for (size_t i = index; i < length; i++)
-		{
-			if (break_actions[i] != PROHIBITED_BRK || break_actions[i] != COMBINING_PROHIBITED_BRK)
-				return i;
-		}
-
-	}
-
-	return index;
+	free (break_actions);
+	return break_here;
 }
 
 static bool
 _raqm_line_break (raqm_t *rq)
 {
+	bool *break_here = NULL;
+
 	for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
 	{
 		size_t len;
 		hb_glyph_position_t *position;
 		int current_x = 0;
-		size_t index;
+		size_t index = -1;
 		raqm_run_t *newrun;
 
 		len = hb_buffer_get_length (run->buffer);
@@ -1009,9 +1005,17 @@ _raqm_line_break (raqm_t *rq)
 		{
 			for (size_t i = 0; i < len; i++)
 			{
-				if (current_x + position[i].x_offset > rq->line_width)
+				if (current_x + position[i].x_offset > rq->line_width) //break
 				{
-					index =_raqm_find_line_break (rq, len, i, true);
+					if(!break_here)
+					{
+						break_here = _raqm_find_line_break(rq);  //array of possible breaks
+					}
+					for (int j = index; j >= 0; j--)
+					{
+						if (break_here[run->pos + j])
+							index = j;
+					}
 
 					newrun = calloc (1, sizeof (raqm_run_t));
 					if (!newrun)
@@ -1044,7 +1048,15 @@ _raqm_line_break (raqm_t *rq)
 			{
 				if (current_x + position[i].x_offset > rq->line_width)
 				{
-					index =_raqm_find_line_break (rq, len, i, false);
+					if(!break_here)
+					{
+						break_here = _raqm_find_line_break(rq);  //array of possible breaks
+					}
+					for (size_t j = index; j < len; j++)
+					{
+						if (break_here[run->pos + j])
+							index = j;
+					}
 
 					newrun = calloc (1, sizeof (raqm_run_t));
 					if (!newrun)
@@ -1074,6 +1086,8 @@ _raqm_line_break (raqm_t *rq)
 		else
 			return false;
 	}
+
+	free (break_here);
 	return true;
 }
 
