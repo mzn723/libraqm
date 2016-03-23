@@ -715,36 +715,36 @@ raqm_get_glyphs (raqm_t *rq,
 	else
 		line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
 
-    for (size_t i = 0; i < len; i++)
-	{
-		rq->glyphs[count + i].index = info[i].codepoint;
-		rq->glyphs[count + i].cluster = info[i].cluster;
-		rq->glyphs[count + i].x_advance = position[i].x_advance;
-		rq->glyphs[count + i].y_advance = position[i].y_advance;
-		rq->glyphs[count + i].x_offset = position[i].x_offset;
-		rq->glyphs[count + i].y_offset = position[i].y_offset;
-		rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
+        for (size_t i = 0; i < len; i++)
+        {
+            rq->glyphs[count + i].index = info[i].codepoint;
+            rq->glyphs[count + i].cluster = info[i].cluster;
+            rq->glyphs[count + i].x_advance = position[i].x_advance;
+            rq->glyphs[count + i].y_advance = position[i].y_advance;
+            rq->glyphs[count + i].x_offset = position[i].x_offset;
+            rq->glyphs[count + i].y_offset = position[i].y_offset;
+            rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
 
-		if (run->line != current_line)
-		{
-			current_x = 0;
-			current_line = run->line;
-		}
+            if (run->line != current_line)
+            {
+                current_x = 0;
+                current_line = run->line;
+            }
 
-		rq->glyphs[count + i].x_position = current_x + rq->glyphs[count + i].x_offset;
-		rq->glyphs[count + i].y_position = rq->glyphs[count + i].y_offset
-				+ run->line * line_space;
+            rq->glyphs[count + i].x_position = current_x + rq->glyphs[count + i].x_offset;
+            rq->glyphs[count + i].y_position = rq->glyphs[count + i].y_offset
+                    + run->line * line_space;
 
-		current_x += rq->glyphs[count + i].x_advance;
+            current_x += rq->glyphs[count + i].x_advance;
 
-		RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-				   " %d\ty_position: %d\tfont: %s\n",
-				   rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
-				rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
-				rq->glyphs[count + i].x_position, rq->glyphs[count + i].y_position,
-				rq->glyphs[count + i].ftface->family_name);
+            RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
+                       " %d\ty_position: %d\tfont: %s\n",
+                    rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
+                    rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
+                    rq->glyphs[count + i].x_position, rq->glyphs[count + i].y_position,
+                    rq->glyphs[count + i].ftface->family_name);
 
-	}
+        }
 
     count += len;
   }
@@ -995,124 +995,135 @@ _raqm_find_line_break (raqm_t *rq)
 static bool
 _raqm_line_break (raqm_t *rq)
 {
-	bool *break_here = NULL;
+    bool *break_here = NULL;
 
-	for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
-	{
-		size_t len;
-		hb_glyph_position_t *position;
-		int current_x = 0;
-		int index = 0;
-		raqm_run_t *newrun;
+    for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
+    {
+        size_t len;
+        hb_glyph_position_t *position;
+        int current_x = 0;
+        int index = 0;
+        raqm_run_t *newrun;
 
-                run->line = 0;
+        run->line = 0;
 
-                newrun:
-		len = hb_buffer_get_length (run->buffer);
-		position = hb_buffer_get_glyph_positions (run->buffer, NULL);
-
-
-		if (run->direction == HB_DIRECTION_LTR)
-		{
-			for (size_t i = 0; i < len; i++)
-			{
-				if (current_x + position[i].x_offset > rq->line_width) //break
-				{
-					if(!break_here)
-						break_here = _raqm_find_line_break(rq);  //array of possible breaks
-
-//					for (index = i; !break_here[run->pos + i] && index > 0; index--)
-//						;
-					for (int j = i; j > 0; j--)
-					{
-						if (break_here[run->pos + j])
-						{
-							index = j;
-							break;
-						}
-					}
-
-                                        if (index == 0)
-                                            index = i;
+newrun:
+        len = hb_buffer_get_length (run->buffer);
+        position = hb_buffer_get_glyph_positions (run->buffer, NULL);
 
 
-					newrun = calloc (1, sizeof (raqm_run_t));
-					if (!newrun)
-						return false;
+        if (run->direction == HB_DIRECTION_LTR)
+        {
+            for (size_t i = 0; i < len; i++)
+            {
+                if (current_x + position[i].x_offset > rq->line_width) //break
+                {
+                    if(!break_here)
+                        break_here = _raqm_find_line_break(rq);  //array of possible breaks
 
-					run->len = index;
+                    //					for (index = i; !break_here[run->pos + i] && index > 0; index--)
+                    //						;
+                    for (int j = i; j > 0; j--)
+                    {
+                        if (break_here[run->pos + j])
+                        {
+                            index = j;
+                            break;
+                        }
+                    }
 
-					newrun->pos = run->pos + run->len;
-					newrun->len = len - (index);
-					newrun->direction = run->direction;
-					newrun->script = run->script;
-					newrun->font = run->font;
-					newrun->line = run->line + 1;
+                    if (index == 0)
+                        index = i;
 
-					run->next = newrun;
-					run = newrun;
 
-                                   if(!_raqm_shape(rq))
-                                   {
-					   return false;
-                                   }
+                    newrun = calloc (1, sizeof (raqm_run_t));
+                    if (!newrun)
+                        return false;
 
-					current_x = 0;
-                                        goto newrun;
-				}
+                    run->len = index;
 
-				current_x += position[i].x_advance;
-			}
-		}
+                    newrun->pos = run->pos + run->len;
+                    newrun->len = len - (index);
+                    newrun->direction = run->direction;
+                    newrun->script = run->script;
+                    newrun->font = run->font;
+                    newrun->line = run->line + 1;
 
-		else if (run->direction == HB_DIRECTION_RTL)
-		{
-			for (int i = len - 1; i >= 0; i--)
-			{
-				if (current_x + position[i].x_offset > rq->line_width)
-				{
-					if(!break_here)
-					{
-						break_here = _raqm_find_line_break(rq);  //array of possible breaks
-					}
-					for (size_t j = index; j < len; j++)
-					{
-						if (break_here[run->pos + j])
-						{
-							index = j;
-							break;
-						}
-					}
+                    run->next = newrun;
+                    run = newrun;
 
-					newrun = calloc (1, sizeof (raqm_run_t));
-					if (!newrun)
-						return false;
+                    if(!_raqm_shape(rq))
+                    {
+                        return false;
+                    }
 
-					run->len = len - index;
+                    current_x = 0;
+                    goto newrun;
+                }
 
-					newrun->pos = run->pos + run->len;
-					newrun->len = index;
-					newrun->direction = run->direction;
-					newrun->script = run->script;
-					newrun->font = run->font;
-					newrun->line = run->line + 1;
+                current_x += position[i].x_advance;
+            }
+        }
 
-					run->next = newrun;
-					run = newrun;
+        else if (run->direction == HB_DIRECTION_RTL)
+        {
+            for (int i = len - 1; i >= 0; i--)
+            {
+                if (current_x + position[i].x_offset > rq->line_width)
+                {
+                    if(!break_here)
+                    {
+                        break_here = _raqm_find_line_break(rq);  //array of possible breaks
+                    }
+                    for (size_t j = i; j < len; j++)
+                    {
+                        if (break_here[run->pos + j])
+                        {
+                            index = j;
+                            break;
+                        }
+                    }
 
-					current_x = 0;
-				}
-				current_x += position[i].x_advance;
-			}
+                    if (index == (int) len)
+                        index = i;
 
-		}
+                    newrun = calloc (1, sizeof (raqm_run_t));
+                    if (!newrun)
+                        return false;
 
-		else
-			return false;
-	}
+                    run->len = len - index;
 
-	free (break_here);
-	return true;
+                    newrun->pos = run->pos + run->len;
+                    newrun->len = index;
+                    newrun->direction = run->direction;
+                    newrun->script = run->script;
+                    newrun->font = run->font;
+                    newrun->line = run->line + 1;
+
+                    run->next = newrun;
+                    run = newrun;
+
+                    if(!_raqm_shape(rq))
+                    {
+                        return false;
+                    }
+
+                    current_x = 0;
+                    goto newrun;
+
+
+                }
+                current_x += position[i].x_advance;
+            }
+
+        }
+
+        else
+            return false;
+    }
+
+    free (break_here);
+    return true;
 }
 
 static bool
