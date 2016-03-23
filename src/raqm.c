@@ -1032,6 +1032,9 @@ _raqm_line_break (raqm_t *rq)
 						}
 					}
 
+                                        if (index == 0)
+                                            index = i;
+
 
 					newrun = calloc (1, sizeof (raqm_run_t));
 					if (!newrun)
