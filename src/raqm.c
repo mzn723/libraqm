@@ -1005,10 +1005,12 @@ _raqm_line_break (raqm_t *rq)
 		int index = 0;
 		raqm_run_t *newrun;
 
+                run->line = 0;
+
+                newrun:
 		len = hb_buffer_get_length (run->buffer);
 		position = hb_buffer_get_glyph_positions (run->buffer, NULL);
 
-		run->line = 0;
 
 		if (run->direction == HB_DIRECTION_LTR)
 		{
@@ -1047,10 +1049,13 @@ _raqm_line_break (raqm_t *rq)
 					run->next = newrun;
 					run = newrun;
 
-				   if(!_raqm_shape(rq))
+                                   if(!_raqm_shape(rq))
+                                   {
 					   return false;
+                                   }
 
 					current_x = 0;
+                                        goto newrun;
 				}
 
 				current_x += position[i].x_advance;
