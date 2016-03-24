@@ -733,7 +733,7 @@ raqm_get_glyphs (raqm_t *rq,
 
             rq->glyphs[count + i].x_position = current_x + rq->glyphs[count + i].x_offset;
             rq->glyphs[count + i].y_position = rq->glyphs[count + i].y_offset
-                    + run->line * line_space;
+                                                                 + run->line * line_space;
 
             current_x += rq->glyphs[count + i].x_advance;
 
@@ -996,21 +996,24 @@ static bool
 _raqm_line_break (raqm_t *rq)
 {
     bool *break_here = NULL;
+    int current_x = 0;
 
     for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
     {
         size_t len;
         hb_glyph_position_t *position;
-        int current_x = 0;
-        int index = 0;
-        raqm_run_t *newrun;
+//        hb_glyph_info_t *info;
 
+
+        raqm_run_t *newrun;
+        int index = 0;
         run->line = 0;
 
 newrun:
+        index = 0;
         len = hb_buffer_get_length (run->buffer);
         position = hb_buffer_get_glyph_positions (run->buffer, NULL);
-
+        //info = hb_buffer_get_glyph_infos (run->buffer, NULL);
 
         if (run->direction == HB_DIRECTION_LTR)
         {
@@ -1021,11 +1024,9 @@ newrun:
                     if(!break_here)
                         break_here = _raqm_find_line_break(rq);  //array of possible breaks
 
-                    //					for (index = i; !break_here[run->pos + i] && index > 0; index--)
-                    //						;
                     for (int j = i; j > 0; j--)
                     {
-                        if (break_here[run->pos + j])
+                        if (break_here[run->pos + j - 1])
                         {
                             index = j;
                             break;
@@ -1117,7 +1118,7 @@ newrun:
             }
 
         }
-
+//info[i].cluster
         else
             return false;
     }
