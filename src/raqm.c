@@ -1002,7 +1002,7 @@ _raqm_line_break (raqm_t *rq)
     {
         size_t len;
         hb_glyph_position_t *position;
-//        hb_glyph_info_t *info;
+        hb_glyph_info_t *info;
 
 
         raqm_run_t *newrun;
@@ -1013,7 +1013,7 @@ newrun:
         index = 0;
         len = hb_buffer_get_length (run->buffer);
         position = hb_buffer_get_glyph_positions (run->buffer, NULL);
-        //info = hb_buffer_get_glyph_infos (run->buffer, NULL);
+        info = hb_buffer_get_glyph_infos (run->buffer, NULL);
 
         if (run->direction == HB_DIRECTION_LTR)
         {
@@ -1063,6 +1063,12 @@ newrun:
                 }
 
                 current_x += position[i].x_advance;
+
+//                while (info[i].cluster == info[i + 1].cluster)
+//                {
+//                    i++;
+//                    current_x += position[i - 1].x_offset + position[i].x_advance;
+//                }
             }
         }
 
@@ -1076,23 +1082,23 @@ newrun:
                     {
                         break_here = _raqm_find_line_break(rq);  //array of possible breaks
                     }
-                    for (size_t j = i; j < len; j++)
+                    for (int j = i; j < run->len; j++)
                     {
-                        if (break_here[run->pos + ((len - 1) - j)])
+                        if (break_here[run->pos + ((run->len - 1) - j)])
                         {
                             index = j;
                             break;
                         }
                     }
 
-                    if (index == (int) len)
+                    if (index == (int) run->len)
                         index = i;
 
                     newrun = calloc (1, sizeof (raqm_run_t));
                     if (!newrun)
                         return false;
 
-                    run->len = len - index;
+                    run->len = run->len - index;
 
                     newrun->pos = run->pos + run->len;
                     newrun->len = index;
@@ -1115,6 +1121,12 @@ newrun:
 
                 }
                 current_x += position[i].x_advance;
+
+//                while (info[i].cluster == info[i - 1].cluster)
+//                {
+//                    i--;
+//                    current_x += position[i + 1].x_offset + position[i].x_advance;
+//                }
             }
 
         }
