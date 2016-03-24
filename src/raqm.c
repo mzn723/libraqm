@@ -1077,7 +1077,7 @@ newrun:
                     }
                     for (size_t j = i; j < len; j++)
                     {
-                        if (break_here[run->pos + j])
+                        if (break_here[run->pos + ((len - 1) - j)])
                         {
                             index = j;
                             break;
