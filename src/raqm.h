@@ -30,6 +30,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 

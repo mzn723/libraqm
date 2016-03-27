@@ -697,7 +697,7 @@ raqm_get_glyphs (raqm_t *rq,
     return NULL;
   }
 
-  RAQM_TEST ("Glyph information:\n");
+  printf ("\nGlyph information:\n count: %d length: %d\n", (int)*length, (int) rq->text_len );
 
   count = 0;
   for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
@@ -714,6 +714,7 @@ raqm_get_glyphs (raqm_t *rq,
 		line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender * (-1);
 	else
 		line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
+        line_space *= -1;
 
         for (size_t i = 0; i < len; i++)
         {
@@ -738,11 +739,11 @@ raqm_get_glyphs (raqm_t *rq,
             current_x += rq->glyphs[count + i].x_advance;
 
             RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-                       " %d\ty_position: %d\tfont: %s\n",
+                       " %d\ty_position: %d\tfont: %s\tline: %d\n",
                     rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
                     rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
                     rq->glyphs[count + i].x_position, rq->glyphs[count + i].y_position,
-                    rq->glyphs[count + i].ftface->family_name);
+                    rq->glyphs[count + i].ftface->family_name, run->line);
 
         }
 
@@ -1076,37 +1077,40 @@ newrun:
         {
             for (int i = len - 1; i >= 0; i--)
             {
+                //printf ("\ni: %d\tclusetr: %d\t glyph: %d\n", i, info[i].cluster, info[i].codepoint);
+
                 if (current_x + position[i].x_offset > rq->line_width)
                 {
                     if(!break_here)
                     {
                         break_here = _raqm_find_line_break(rq);  //array of possible breaks
                     }
-                    for (int j = i; j < run->len; j++)
+                    for (int j = info[i].cluster; j >= 0 ; j--)
                     {
-                        if (break_here[run->pos + ((run->len - 1) - j)])
+                        if (break_here [j])
                         {
                             index = j;
                             break;
                         }
                     }
 
-                    if (index == (int) run->len)
-                        index = i;
+                    if (index == 0)
+                        index = info[i].cluster;
 
                     newrun = calloc (1, sizeof (raqm_run_t));
                     if (!newrun)
                         return false;
 
-                    run->len = run->len - index;
 
-                    newrun->pos = run->pos + run->len;
-                    newrun->len = index;
+
+                    newrun->pos = index;
+                    newrun->len = (run->pos + run->len) - newrun->pos;
                     newrun->direction = run->direction;
                     newrun->script = run->script;
                     newrun->font = run->font;
                     newrun->line = run->line + 1;
 
+                    run->len = abs (index - run->pos);
                     run->next = newrun;
                     run = newrun;
 
@@ -1122,11 +1126,6 @@ newrun:
                 }
                 current_x += position[i].x_advance;
 
-//                while (info[i].cluster == info[i - 1].cluster)
-//                {
-//                    i--;
-//                    current_x += position[i + 1].x_offset + position[i].x_advance;
-//                }
             }
 
         }
