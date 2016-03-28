@@ -738,7 +738,7 @@ raqm_get_glyphs (raqm_t *rq,
 
             current_x += rq->glyphs[count + i].x_advance;
 
-            RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
+            printf ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
                        " %d\ty_position: %d\tfont: %s\tline: %d\n",
                     rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
                     rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
@@ -998,6 +998,7 @@ _raqm_line_break (raqm_t *rq)
 {
     bool *break_here = NULL;
     int current_x = 0;
+    int current_line = 0;
 
     for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
     {
@@ -1008,7 +1009,7 @@ _raqm_line_break (raqm_t *rq)
 
         raqm_run_t *newrun;
         int index = 0;
-        run->line = 0;
+        run->line = current_line;
 
 newrun:
         index = 0;
@@ -1050,6 +1051,11 @@ newrun:
                     newrun->script = run->script;
                     newrun->font = run->font;
                     newrun->line = run->line + 1;
+                    if(run->next)
+                    {
+                        run->next->line = newrun->line;
+                        newrun->next = run->next;
+                    }
 
                     run->next = newrun;
                     run = newrun;
@@ -1111,6 +1117,11 @@ newrun:
                     newrun->line = run->line + 1;
 
                     run->len = abs (index - run->pos);
+                    if(run->next)
+                    {
+                        run->next->line = newrun->line;
+                        newrun->next = run->next;
+                    }
                     run->next = newrun;
                     run = newrun;
 
@@ -1132,6 +1143,8 @@ newrun:
 //info[i].cluster
         else
             return false;
+
+        current_line = run->line;
     }
 
     free (break_here);
