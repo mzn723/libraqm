@@ -985,7 +985,7 @@ _raqm_find_line_break (raqm_t *rq)
 
 	for(size_t i = 0; i < length; i++)
 	{
-		printf("%d ", break_here[i]);
+                printf("%d:%d\n", (int)i, break_here[i]);
 
 	}
 
@@ -1087,7 +1087,7 @@ newrun:
                     }
                     for (int j = info[i].cluster; j >= 0 ; j--)
                     {
-                        if (break_here [j])
+                        if (break_here [j - 1])
                         {
                             index = j;
                             break;
