@@ -1107,7 +1107,7 @@ _raqm_line_break (raqm_t *rq)
     current_x = 0;
     for (int i = 0; i < glyphs_length; i++)
     {
-        line_space =  (-1) * abs(rq->ftfaces[rq->glyphs[i].cluster]->ascender + rq->ftfaces[rq->glyphs[i].cluster]->descender);
+        line_space =  (-1) * (rq->ftfaces[rq->glyphs[i].cluster]->ascender + abs(rq->ftfaces[rq->glyphs[i].cluster]->descender));
 
         if (rq->glyphs[i].line != current_line)
         {
