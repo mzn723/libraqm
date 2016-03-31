@@ -82,6 +82,8 @@ typedef enum
  */
 typedef struct raqm_glyph_t {
     unsigned int index;
+    int visual_index;
+    int line;
     int x_advance;
     int y_advance;
     int x_offset;
