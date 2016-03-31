@@ -68,6 +68,24 @@ typedef enum
 } raqm_direction_t;
 
 /**
+ * raqm_alignment_t:
+ * @RAQM_ALIGNMENT_RIGHT: Paragraph is right aligned.
+ * @RAQM_ALIGNMENT_LEFT: Paragraph is left aligned.
+ * @RAQM_ALIGNMENT_CENTER: Paragraph is center aligned..
+ * @RAQM_ALIGNMENT_FULL: Paragraph is full justified.
+ *
+ *
+ * Since: 0.2
+ */
+typedef enum
+{
+    RAQM_ALIGNMENT_RIGHT,
+    RAQM_ALIGNMENT_LEFT,
+    RAQM_ALIGNMENT_CENTER,
+    RAQM_ALIGNMENT_FULL,
+} raqm_alignment_t;
+
+/**
  * raqm_glyph_t:
  * @index: the index of the glyph in the font file.
  * @x_advance: the glyph advance width in horizontal text.
@@ -133,7 +151,12 @@ raqm_set_freetype_face_range (raqm_t *rq,
                               size_t  len);
 
 bool
-raqm_set_line_width (raqm_t *rq, int width);
+raqm_set_line_width (raqm_t *rq,
+                     int    width);
+
+bool
+raqm_set_paragraph_alignment (raqm_t           *rq,
+                              raqm_alignment_t align);
 
 bool
 raqm_layout (raqm_t *rq);

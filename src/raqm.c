@@ -192,6 +192,7 @@ struct _raqm {
   raqm_flags_t     flags;
 
   int              line_width;
+  raqm_alignment_t alignment;
 };
 
 struct _raqm_run {
@@ -249,6 +250,8 @@ raqm_create (void)
   rq->flags = RAQM_FLAG_NONE;
 
   rq->line_width = 2147483647;
+
+  rq->alignment = RAQM_ALIGNMENT_LEFT;
 
   return rq;
 }
@@ -597,6 +600,29 @@ raqm_set_line_width (raqm_t *rq, int width)
     return false;
 
   rq->line_width = width;
+
+  return true;
+}
+
+/**
+ * raqm_set_paragraph_alignment:
+ * @rq: a #raqm_t.
+ * @alignment: paragraph alignment.
+ *
+ * Sets the paragraph alignment.
+ *
+ * Return value:
+ * %true if no errors happened, %false otherwise.
+ *
+ * Since: 0.2
+ */
+bool
+raqm_set_paragraph_alignment (raqm_t *rq, raqm_alignment_t alignment)
+{
+  if (!rq)
+    return false;
+
+  rq->alignment = alignment;
 
   return true;
 }
