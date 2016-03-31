@@ -671,9 +671,6 @@ raqm_get_glyphs (raqm_t *rq,
                  size_t *length)
 {
   size_t count = 0;
-  int current_x = 0;
-  int line_space;
-  int current_line = 0;
 
   if (!rq || !rq->runs || !length)
   {
@@ -687,10 +684,6 @@ raqm_get_glyphs (raqm_t *rq,
 
   *length = count;
 
-  if (rq->glyphs)
-    free (rq->glyphs);
-
-  rq->glyphs = malloc (sizeof (raqm_glyph_t) * count);
   if (!rq->glyphs)
   {
     *length = 0;
@@ -699,55 +692,14 @@ raqm_get_glyphs (raqm_t *rq,
 
   RAQM_TEST ("\nGlyph information:\n count: %d length: %d\n", (int)*length, (int) rq->text_len );
 
-  count = 0;
-  for (raqm_run_t *run = rq->runs; run != NULL; run = run->next)
+  for (size_t i = 0; i < *length; i++)
   {
-    size_t len;
-    hb_glyph_info_t *info;
-    hb_glyph_position_t *position;
-
-    len = hb_buffer_get_length (run->buffer);
-    info = hb_buffer_get_glyph_infos (run->buffer, NULL);
-    position = hb_buffer_get_glyph_positions (run->buffer, NULL);
-
-        if (rq->ftfaces[run->pos]->descender < 0)
-                line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender * (-1);
-        else
-                line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
-        line_space *= -1;
-
-        for (size_t i = 0; i < len; i++)
-        {
-            rq->glyphs[count + i].index = info[i].codepoint;
-            rq->glyphs[count + i].cluster = info[i].cluster;
-            rq->glyphs[count + i].x_advance = position[i].x_advance;
-            rq->glyphs[count + i].y_advance = position[i].y_advance;
-            rq->glyphs[count + i].x_offset = position[i].x_offset;
-            rq->glyphs[count + i].y_offset = position[i].y_offset;
-            rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
-
-            if (run->line != current_line)
-            {
-                current_x = 0;
-                current_line = run->line;
-            }
-
-            rq->glyphs[count + i].x_position = current_x + rq->glyphs[count + i].x_offset;
-            rq->glyphs[count + i].y_position = rq->glyphs[count + i].y_offset
-                                                                 + run->line * line_space;
-
-            current_x += rq->glyphs[count + i].x_advance;
-
-            RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-                       " %d\ty_position: %d\tfont: %s\tline: %d\n",
-                    rq->glyphs[count + i].index, rq->glyphs[count + i].x_offset,
-                    rq->glyphs[count + i].y_offset, rq->glyphs[count + i].x_advance,
-                    rq->glyphs[count + i].x_position, rq->glyphs[count + i].y_position,
-                    rq->glyphs[count + i].ftface->family_name, run->line);
-
-        }
-
-    count += len;
+      RAQM_TEST ("glyph [%d]\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
+                 " %d\ty_position: %d\tfont: %s\tline: %d\n",
+                 rq->glyphs[i].index, rq->glyphs[i].x_offset,
+                 rq->glyphs[i].y_offset, rq->glyphs[i].x_advance,
+                 rq->glyphs[i].x_position, rq->glyphs[i].y_position,
+                 rq->glyphs[i].ftface->family_name, rq->glyphs[i].line);
   }
 
   if (rq->flags & RAQM_FLAG_UTF8)
@@ -1027,7 +979,7 @@ _raqm_line_break (raqm_t *rq)
     int current_x = 0;
     int line_space;
     int current_line = 0;
-    raqm_glyph_t *glyphs;
+    //raqm_glyph_t *rq->glyphs;
 
     bool *break_here = NULL;
 
@@ -1042,8 +994,8 @@ _raqm_line_break (raqm_t *rq)
 
     printf ("glyph_length: %d\n", glyphs_length);
 
-    glyphs = malloc (sizeof (raqm_glyph_t) * count);
-    if (!glyphs)
+    rq->glyphs = malloc (sizeof (raqm_glyph_t) * count);
+    if (!rq->glyphs)
     {
       return false;
     }
@@ -1068,15 +1020,15 @@ _raqm_line_break (raqm_t *rq)
 
           for (size_t i = 0; i < len; i++)
           {
-              glyphs[count + i].index = info[i].codepoint;
-              glyphs[count + i].cluster = info[i].cluster;
-              glyphs[count + i].x_advance = position[i].x_advance;
-              glyphs[count + i].y_advance = position[i].y_advance;
-              glyphs[count + i].x_offset = position[i].x_offset;
-              glyphs[count + i].y_offset = position[i].y_offset;
-              glyphs[count + i].ftface = rq->ftfaces[glyphs[count + i].cluster];
-              glyphs[count + i].visual_index = count + i;
-              glyphs[count + i].line = 0;
+              rq->glyphs[count + i].index = info[i].codepoint;
+              rq->glyphs[count + i].cluster = info[i].cluster;
+              rq->glyphs[count + i].x_advance = position[i].x_advance;
+              rq->glyphs[count + i].y_advance = position[i].y_advance;
+              rq->glyphs[count + i].x_offset = position[i].x_offset;
+              rq->glyphs[count + i].y_offset = position[i].y_offset;
+              rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
+              rq->glyphs[count + i].visual_index = count + i;
+              rq->glyphs[count + i].line = 0;
 
 //              if (run->line != current_line)
 //              {
@@ -1091,11 +1043,11 @@ _raqm_line_break (raqm_t *rq)
 //              current_x += glyphs[count + i].x_advance;
 
               printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\t"
-                      "font: %s\tline: %d\n", glyphs[count + i].visual_index,
-                      glyphs[count + i].cluster, glyphs[count + i].index,
-                      glyphs[count + i].x_offset, glyphs[count + i].y_offset,
-                      glyphs[count + i].x_advance,
-                      glyphs[count + i].ftface->family_name, run->line);
+                      "font: %s\tline: %d\n", rq->glyphs[count + i].visual_index,
+                      rq->glyphs[count + i].cluster, rq->glyphs[count + i].index,
+                      rq->glyphs[count + i].x_offset, rq->glyphs[count + i].y_offset,
+                      rq->glyphs[count + i].x_advance,
+                      rq->glyphs[count + i].ftface->family_name, run->line);
 
           }
 
@@ -1103,18 +1055,18 @@ _raqm_line_break (raqm_t *rq)
     }
 
     /* Sorting glyphs to logical order */
-    qsort(glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_logical_sort);
+    qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_logical_sort);
 
     printf ("\t\t\nafter logical sorting\n\n");
     for (int i = 0; i < glyphs_length; i++)
     {
         printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-                   " %d\ty_position: %d\tfont: %s\n", glyphs[i].visual_index,
-                glyphs[i].cluster, glyphs[i].index,
-                glyphs[i].x_offset, glyphs[i].y_offset,
-                glyphs[i].x_advance,
-                glyphs[i].x_position, glyphs[i].y_position,
-                glyphs[i].ftface->family_name);
+                   " %d\ty_position: %d\tfont: %s\n", rq->glyphs[i].visual_index,
+                rq->glyphs[i].cluster, rq->glyphs[i].index,
+                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
+                rq->glyphs[i].x_advance,
+                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
+                rq->glyphs[i].ftface->family_name);
     }
 
     /* Line breaking */
@@ -1122,19 +1074,19 @@ _raqm_line_break (raqm_t *rq)
     current_line = 0;
     for (int i = 0; i < glyphs_length; i++)
     {
-        glyphs[i].line = current_line;
-        current_x += glyphs[i].x_offset + glyphs[i].x_advance;;
+        rq->glyphs[i].line = current_line;
+        current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;;
 
         if (current_x > rq->line_width)
         {
-            while (!break_here[glyphs[i].cluster] && i >= 0)
+            while (!break_here[rq->glyphs[i].cluster] && i >= 0)
             {
                 i--;
             }
 
             current_line ++;
             current_x = 0;
-            printf ("BREAK HERE : %d\n", glyphs[i].index);
+            printf ("BREAK HERE : %d\n", rq->glyphs[i].index);
         }
     }
 
@@ -1142,31 +1094,31 @@ _raqm_line_break (raqm_t *rq)
     for (int i = 0; i < glyphs_length; i++)
     {
         printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tline: %d\n",
-                i, glyphs[i].cluster,
-                glyphs[i].visual_index, glyphs[i].index,
-                glyphs[i].line);
+                i, rq->glyphs[i].cluster,
+                rq->glyphs[i].visual_index, rq->glyphs[i].index,
+                rq->glyphs[i].line);
     }
 
     /* Sorting glyphs back to visual order */
-    qsort(glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_visual_sort);
+    qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_visual_sort);
 
     /* calculating positions */
     current_line = 0;
     current_x = 0;
     for (int i = 0; i < glyphs_length; i++)
     {
-        line_space =  (-1) * abs(rq->ftfaces[glyphs[i].cluster]->ascender + rq->ftfaces[glyphs[i].cluster]->descender);
+        line_space =  (-1) * abs(rq->ftfaces[rq->glyphs[i].cluster]->ascender + rq->ftfaces[rq->glyphs[i].cluster]->descender);
 
-        if (glyphs[i].line != current_line)
+        if (rq->glyphs[i].line != current_line)
         {
             current_x = 0;
-            current_line = glyphs[i].line;
+            current_line = rq->glyphs[i].line;
         }
 
-        glyphs[i].x_position = current_x + glyphs[i].x_offset;
-        glyphs[i].y_position = glyphs[i].y_offset + glyphs[i].line * line_space;
+        rq->glyphs[i].x_position = current_x + rq->glyphs[i].x_offset;
+        rq->glyphs[i].y_position = rq->glyphs[i].y_offset + rq->glyphs[i].line * line_space;
 
-        current_x += glyphs[i].x_advance;
+        current_x += rq->glyphs[i].x_advance;
     }
 
     /* testing  */
@@ -1175,13 +1127,13 @@ _raqm_line_break (raqm_t *rq)
     {
         printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tx_offset: %d\ty_offset: %d\t"
                 "x_advance: %d\tx_position: %d\ty_position: %d\tfont: %s\tline: %d\n",
-                i, glyphs[i].cluster,
-                glyphs[i].visual_index, glyphs[i].index,
-                glyphs[i].x_offset, glyphs[i].y_offset,
-                glyphs[i].x_advance,
-                glyphs[i].x_position, glyphs[i].y_position,
-                glyphs[i].ftface->family_name,
-                glyphs[i].line
+                i, rq->glyphs[i].cluster,
+                rq->glyphs[i].visual_index, rq->glyphs[i].index,
+                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
+                rq->glyphs[i].x_advance,
+                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
+                rq->glyphs[i].ftface->family_name,
+                rq->glyphs[i].line
                 );
     }
 
