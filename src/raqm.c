@@ -963,10 +963,11 @@ _raqm_find_line_break (raqm_t *rq)
 
 	for(size_t i = 0; i < length; i++)
 	{
-                printf("%d:%d\n", (int)i, break_here[i]);
+                printf("%d", break_here[i]);
 
 	}
 
+        printf("\n");
 	free (break_actions);
 	return break_here;
 }
@@ -1005,7 +1006,7 @@ _raqm_line_break (raqm_t *rq)
     int current_x = 0;
     int line_space;
     int current_line = 0;
-    //raqm_glyph_t *rq->glyphs;
+    int align_offset = 0;
 
     bool *break_here = NULL;
 
@@ -1038,12 +1039,6 @@ _raqm_line_break (raqm_t *rq)
       info = hb_buffer_get_glyph_infos (run->buffer, NULL);
       position = hb_buffer_get_glyph_positions (run->buffer, NULL);
 
-//          if (rq->ftfaces[run->pos]->descender < 0)
-//                  line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender * (-1);
-//          else
-//                  line_space = rq->ftfaces[run->pos]->ascender + rq->ftfaces[run->pos]->descender;
-//          line_space *= -1;
-
           for (size_t i = 0; i < len; i++)
           {
               rq->glyphs[count + i].index = info[i].codepoint;
@@ -1056,24 +1051,12 @@ _raqm_line_break (raqm_t *rq)
               rq->glyphs[count + i].visual_index = count + i;
               rq->glyphs[count + i].line = 0;
 
-//              if (run->line != current_line)
-//              {
-//                  current_x = 0;
-//                  current_line = run->line;
-//              }
-
-//              glyphs[count + i].x_position = current_x + glyphs[count + i].x_offset;
-//              glyphs[count + i].y_position = glyphs[count + i].y_offset
-//                                                                   + run->line * line_space;
-
-//              current_x += glyphs[count + i].x_advance;
-
-              printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\t"
-                      "font: %s\tline: %d\n", rq->glyphs[count + i].visual_index,
-                      rq->glyphs[count + i].cluster, rq->glyphs[count + i].index,
-                      rq->glyphs[count + i].x_offset, rq->glyphs[count + i].y_offset,
-                      rq->glyphs[count + i].x_advance,
-                      rq->glyphs[count + i].ftface->family_name, run->line);
+//              printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\t"
+//                      "font: %s\tline: %d\n", rq->glyphs[count + i].visual_index,
+//                      rq->glyphs[count + i].cluster, rq->glyphs[count + i].index,
+//                      rq->glyphs[count + i].x_offset, rq->glyphs[count + i].y_offset,
+//                      rq->glyphs[count + i].x_advance,
+//                      rq->glyphs[count + i].ftface->family_name, run->line);
 
           }
 
@@ -1083,17 +1066,17 @@ _raqm_line_break (raqm_t *rq)
     /* Sorting glyphs to logical order */
     qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_logical_sort);
 
-    printf ("\t\t\nafter logical sorting\n\n");
-    for (int i = 0; i < glyphs_length; i++)
-    {
-        printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-                   " %d\ty_position: %d\tfont: %s\n", rq->glyphs[i].visual_index,
-                rq->glyphs[i].cluster, rq->glyphs[i].index,
-                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
-                rq->glyphs[i].x_advance,
-                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
-                rq->glyphs[i].ftface->family_name);
-    }
+//    printf ("\t\t\nafter logical sorting\n\n");
+//    for (int i = 0; i < glyphs_length; i++)
+//    {
+//        printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
+//                   " %d\ty_position: %d\tfont: %s\n", rq->glyphs[i].visual_index,
+//                rq->glyphs[i].cluster, rq->glyphs[i].index,
+//                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
+//                rq->glyphs[i].x_advance,
+//                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
+//                rq->glyphs[i].ftface->family_name);
+//    }
 
     /* Line breaking */
     current_x = 0;
@@ -1101,18 +1084,20 @@ _raqm_line_break (raqm_t *rq)
     for (int i = 0; i < glyphs_length; i++)
     {
         rq->glyphs[i].line = current_line;
-        current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;;
+        current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;
+        rq->glyphs[i].x_offset += align_offset;
 
         if (current_x > rq->line_width)
         {
-            while (!break_here[rq->glyphs[i].cluster] && i >= 0)
+            while (!break_here[rq->glyphs[i].cluster - 1] && i >= 0)
             {
                 i--;
             }
 
             current_line ++;
             current_x = 0;
-            printf ("BREAK HERE : %d\n", rq->glyphs[i].index);
+
+
         }
     }
 
@@ -1128,6 +1113,31 @@ _raqm_line_break (raqm_t *rq)
     /* Sorting glyphs back to visual order */
     qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_visual_sort);
 
+    /* handeling alighnment */
+    if (rq->alignment != RAQM_ALIGNMENT_LEFT)
+    {
+        if (rq->alignment == RAQM_ALIGNMENT_RIGHT)
+        {
+            current_line = 0;
+            current_x = 0;
+            for (int i = 0; i < glyphs_length; i++)
+            {
+                if (rq->glyphs[i].line != current_line)
+                {
+                    align_offset = rq->line_width - current_x - abs(rq->glyphs[i].x_offset + rq->glyphs[i].x_advance) - rq->glyphs[i - 1].x_advance;
+                    for (int j = i - 1; j >= 0 && rq->glyphs[j].line == current_line; j--)
+                    {
+                        rq->glyphs[i].x_offset += align_offset;
+                    }
+                    current_x = 0;
+                    current_line = rq->glyphs[i].line;
+                }
+
+                current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;
+            }
+        }
+    }
+
     /* calculating positions */
     current_line = 0;
     current_x = 0;
@@ -1136,7 +1146,7 @@ _raqm_line_break (raqm_t *rq)
         line_space =  (-1) * (rq->ftfaces[rq->glyphs[i].cluster]->ascender + abs(rq->ftfaces[rq->glyphs[i].cluster]->descender));
 
         if (rq->glyphs[i].line != current_line)
-        {
+        {   
             current_x = 0;
             current_line = rq->glyphs[i].line;
         }
