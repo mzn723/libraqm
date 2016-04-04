@@ -815,19 +815,18 @@ enum break_class
 };
 
 // Define some short-cuts for the table
-#define oo DIRECT_BRK				// '_' break allowed
-#define SS INDIRECT_BRK				// '%' only break across space (aka 'indirect break' below)
-#define cc COMBINING_INDIRECT_BRK	// '#' indirect break for combining marks
-#define CC COMBINING_PROHIBITED_BRK	// '@' indirect break for combining marks
-#define XX PROHIBITED_BRK			// '^' no break allowed_BRK
+#define oo DIRECT_BREAK				// '_' break allowed
+#define SS INDIRECT_BREAK				// '%' only break across space (aka 'indirect break' below)
+#define cc COMBINING_INDIRECT_BREAK	// '#' indirect break for combining marks
+#define CC COMBINING_PROHIBITED_BREAK	// '@' indirect break for combining marks
+#define XX PROHIBITED_BREAK			// '^' no break allowed_BRK
 
 enum break_action {
-	DIRECT_BRK = 0,             	// _ in table, 	oo in array
-	INDIRECT_BRK,               	// % in table, 	SS in array
-	COMBINING_INDIRECT_BRK,		// # in table, 	cc in array
-	COMBINING_PROHIBITED_BRK,  	// @ in table 	CC in array
-	PROHIBITED_BRK,             	// ^ in table, 	XX in array
-	EXPLICIT_BRK 				// ! in rules
+        DIRECT_BREAK = 0,             	// _ in table, 	oo in array
+        INDIRECT_BREAK,               	// % in table, 	SS in array
+        COMBINING_INDIRECT_BREAK,		// # in table, 	cc in array
+        COMBINING_PROHIBITED_BREAK,  	// @ in table 	CC in array
+        PROHIBITED_BREAK,             	// ^ in table, 	XX in array
 };
 
 static bool *
@@ -897,53 +896,50 @@ _raqm_find_line_break (raqm_t *rq)
 
 		// handle spaces explicitly
 		if (next_class == SP) {
-			break_actions[i-1]  = PROHIBITED_BRK;   // apply rule LB 7: � SP
+                        break_actions[i-1]  = PROHIBITED_BREAK;   // apply rule LB 7: � SP
 			continue;
 		}
 
 		if (next_class == BK || next_class == NL || next_class == LF) {
-			break_actions[i-1]  = PROHIBITED_BRK;
+                        break_actions[i-1]  = PROHIBITED_BREAK;
 			current_class = BK;
 			continue;
 		}
 
 		if (next_class == CR)
 		{
-			break_actions[i-1]  = PROHIBITED_BRK;
+                        break_actions[i-1]  = PROHIBITED_BREAK;
 			current_class = CR;
 			continue;
 		}
-
-		//	  ASSERT(cbk < SP);
-		//	  ASSERT(bk_actions[i] < SP);
 
 		// lookup pair table information in brkPairs[before, after];
 		current_action = break_pairs[current_class][next_class];
 		break_actions[i-1] = current_action;
 
-		if (current_action == INDIRECT_BRK)		// resolve indirect break
+                if (current_action == INDIRECT_BREAK)		// resolve indirect break
 		{
 			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)                    // if context is A SP * B
-				break_actions[i-1] = INDIRECT_BRK;             //       break opportunity
+                                break_actions[i-1] = INDIRECT_BREAK;             //       break opportunity
 			else                                        // else
-				break_actions[i-1] = PROHIBITED_BRK;           //       no break opportunity
+                                break_actions[i-1] = PROHIBITED_BREAK;           //       no break opportunity
 		}
 
-		else if (current_action == COMBINING_PROHIBITED_BRK)		// this is the case OP SP* CM
+                else if (current_action == COMBINING_PROHIBITED_BREAK)		// this is the case OP SP* CM
 		{
-			break_actions[i-1] = COMBINING_PROHIBITED_BRK;     // no break allowed
+                        break_actions[i-1] = COMBINING_PROHIBITED_BREAK;     // no break allowed
 			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) != SP)
 				continue;                               // apply rule 9: X CM* -> X
 		}
 
-		else if (current_action == COMBINING_INDIRECT_BRK)		// resolve combining mark break
+                else if (current_action == COMBINING_INDIRECT_BREAK)		// resolve combining mark break
 		{
-			break_actions[i-1] = PROHIBITED_BRK;               // don't break before CM
+                        break_actions[i-1] = PROHIBITED_BREAK;               // don't break before CM
 			if (ucdn_get_resolved_linebreak_class(rq->text[i-1]) == SP)
 			{
-				break_actions[i-1] = PROHIBITED_BRK;		// legacy: keep SP CM together
+                                break_actions[i-1] = PROHIBITED_BREAK;		// legacy: keep SP CM together
 				if (i > 1)
-					break_actions[i-2] = ((ucdn_get_resolved_linebreak_class(rq->text[i-2]) == SP) ? INDIRECT_BRK : DIRECT_BRK);
+                                        break_actions[i-2] = ((ucdn_get_resolved_linebreak_class(rq->text[i-2]) == SP) ? INDIRECT_BREAK : DIRECT_BREAK);
 			} else                                     // apply rule 9: X CM * -> X
 				continue;
 		}
@@ -953,7 +949,7 @@ _raqm_find_line_break (raqm_t *rq)
 
 	for(size_t i = 0; i < length; i++)
 	{
-		if (break_actions[i] == INDIRECT_BRK || break_actions[i] == DIRECT_BRK )
+                if (break_actions[i] == INDIRECT_BREAK || break_actions[i] == DIRECT_BREAK )
 		{
 			break_here[i] = true;
 		}
@@ -961,13 +957,6 @@ _raqm_find_line_break (raqm_t *rq)
 			break_here[i] = false;
 	}
 
-	for(size_t i = 0; i < length; i++)
-	{
-                printf("%d", break_here[i]);
-
-	}
-
-        printf("\n");
 	free (break_actions);
 	return break_here;
 }
@@ -1008,6 +997,7 @@ _raqm_line_break (raqm_t *rq)
     int current_line = 0;
     int align_offset = 0;
     int i, j, k;
+
     int space_count;
     int space_extension;
 
@@ -1021,8 +1011,6 @@ _raqm_line_break (raqm_t *rq)
       count += hb_buffer_get_length (run->buffer);
 
     glyphs_length = count;
-
-    printf ("glyph_length: %d\n", glyphs_length);
 
     rq->glyphs = malloc (sizeof (raqm_glyph_t) * count);
     if (!rq->glyphs)
@@ -1053,14 +1041,6 @@ _raqm_line_break (raqm_t *rq)
               rq->glyphs[count + i].ftface = rq->ftfaces[rq->glyphs[count + i].cluster];
               rq->glyphs[count + i].visual_index = count + i;
               rq->glyphs[count + i].line = 0;
-
-//              printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\t"
-//                      "font: %s\tline: %d\n", rq->glyphs[count + i].visual_index,
-//                      rq->glyphs[count + i].cluster, rq->glyphs[count + i].index,
-//                      rq->glyphs[count + i].x_offset, rq->glyphs[count + i].y_offset,
-//                      rq->glyphs[count + i].x_advance,
-//                      rq->glyphs[count + i].ftface->family_name, run->line);
-
           }
 
       count += len;
@@ -1069,24 +1049,11 @@ _raqm_line_break (raqm_t *rq)
     /* Sorting glyphs to logical order */
     qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_logical_sort);
 
-//    printf ("\t\t\nafter logical sorting\n\n");
-//    for (int i = 0; i < glyphs_length; i++)
-//    {
-//        printf ("glyph [%d]\tcluster: %d\tindex:%d\tx_offset: %d\ty_offset: %d\tx_advance: %d\tx_position:"
-//                   " %d\ty_position: %d\tfont: %s\n", rq->glyphs[i].visual_index,
-//                rq->glyphs[i].cluster, rq->glyphs[i].index,
-//                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
-//                rq->glyphs[i].x_advance,
-//                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
-//                rq->glyphs[i].ftface->family_name);
-//    }
-
     /* Line breaking */
     current_x = 0;
     current_line = 0;
     for (i = 0; i < glyphs_length; i++)
     {
-
         rq->glyphs[i].line = current_line;
         current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;
 
@@ -1098,25 +1065,29 @@ _raqm_line_break (raqm_t *rq)
             }
 
             /* Next line cannot start with a white space */
-            for (j = i + 1; rq->text[rq->glyphs[j].cluster] == 32; j++)
+            if (rq->text[rq->glyphs[i + 1].cluster] == 32)
             {
-                rq->glyphs[j].line = current_line;
+                for (j = i + 1; rq->text[rq->glyphs[j].cluster] == 32; j++)
+                {
+                    rq->glyphs[j].line = current_line;
+                }
+                i = j - 1; //skip those
             }
 
-            i = j - 1;
+            /* Handeling glyphs for the same character */
+            if (rq->glyphs[i + 1].cluster == rq->glyphs[i].cluster)
+            {
+                for (k = i + 1; rq->glyphs[k].cluster == rq->glyphs[i].cluster; k++)
+                {
+                    rq->glyphs[j].line = current_line;
+                }
+                i = k - 1; //skip those
+            }
+
             current_line ++;
             current_x = 0;
         }
     }
-
-//    /* testing  */
-//    for (i = 0; i < glyphs_length; i++)
-//    {
-//        printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tline: %d\n",
-//                i, rq->glyphs[i].cluster,
-//                rq->glyphs[i].visual_index, rq->glyphs[i].index,
-//                rq->glyphs[i].line);
-//    }
 
     /* Sorting glyphs back to visual order */
     qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_visual_sort);
@@ -1215,24 +1186,6 @@ _raqm_line_break (raqm_t *rq)
             }
         }
     }
-
-
-    /* testing  */
-    printf ("\t\t\nFINAL sorting\n\n");
-    for (i = 0; i < glyphs_length; i++)
-    {
-        printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tx_offset: %d\ty_offset: %d\t"
-                "x_advance: %d\tx_position: %d\ty_position: %d\tfont: %s\tline: %d\n",
-                i, rq->glyphs[i].cluster,
-                rq->glyphs[i].visual_index, rq->glyphs[i].index,
-                rq->glyphs[i].x_offset, rq->glyphs[i].y_offset,
-                rq->glyphs[i].x_advance,
-                rq->glyphs[i].x_position, rq->glyphs[i].y_position,
-                rq->glyphs[i].ftface->family_name,
-                rq->glyphs[i].line
-                );
-    }
-
 
     free (break_here);
     return true;
