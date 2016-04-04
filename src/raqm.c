@@ -1086,32 +1086,37 @@ _raqm_line_break (raqm_t *rq)
     current_line = 0;
     for (i = 0; i < glyphs_length; i++)
     {
+
         rq->glyphs[i].line = current_line;
         current_x += rq->glyphs[i].x_offset + rq->glyphs[i].x_advance;
-        rq->glyphs[i].x_offset += align_offset;
 
         if (current_x > rq->line_width)
         {
-            while (!break_here[rq->glyphs[i].cluster - 1] && i >= 0)
+            while (!break_here[rq->glyphs[i].cluster] && i >= 0)
             {
                 i--;
             }
 
+            /* Next line cannot start with a white space */
+            for (j = i + 1; rq->text[rq->glyphs[j].cluster] == 32; j++)
+            {
+                rq->glyphs[j].line = current_line;
+            }
+
+            i = j - 1;
             current_line ++;
             current_x = 0;
-
-
         }
     }
 
-    /* testing  */
-    for (i = 0; i < glyphs_length; i++)
-    {
-        printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tline: %d\n",
-                i, rq->glyphs[i].cluster,
-                rq->glyphs[i].visual_index, rq->glyphs[i].index,
-                rq->glyphs[i].line);
-    }
+//    /* testing  */
+//    for (i = 0; i < glyphs_length; i++)
+//    {
+//        printf ("glyph [%d]\tcluster: %d\tvisual index: %d\tindex: %d\tline: %d\n",
+//                i, rq->glyphs[i].cluster,
+//                rq->glyphs[i].visual_index, rq->glyphs[i].index,
+//                rq->glyphs[i].line);
+//    }
 
     /* Sorting glyphs back to visual order */
     qsort(rq->glyphs, glyphs_length, sizeof(raqm_glyph_t), _raqm_visual_sort);
